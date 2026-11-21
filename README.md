@@ -1,0 +1,1 @@
+﻿# Service Manifest Validator
