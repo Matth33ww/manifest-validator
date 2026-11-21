@@ -1,0 +1,68 @@
+package main
+
+import (
+	"net/mail"
+	"strings"
+)
+
+type Manifest struct {
+	Name           string `json:"name"`
+	Owner          string `json:"owner"`
+	URL            string `json:"url"`
+	HealthEndpoint string `json:"healthEndpoint"`
+}
+
+type Issue struct {
+	Field    string `json:"field"`
+	Message  string `json:"message"`
+	Severity string `json:"severity"` // "error" or "warning"
+}
+
+// Validate runs every rule and returns all problems found.
+func Validate(m Manifest) []Issue {
+	var issues []Issue
+	issues = append(issues, checkRequired(m)...)
+	issues = append(issues, checkOwnerEmail(m)...)
+	return issues
+}
+
+// Rule 1: required fields must not be empty.
+func checkRequired(m Manifest) []Issue {
+	fields := []struct {
+		name  string
+		value string
+	}{
+		{"name", m.Name},
+		{"owner", m.Owner},
+		{"url", m.URL},
+		{"healthEndpoint", m.HealthEndpoint},
+	}
+
+	var issues []Issue
+	for _, f := range fields {
+		if strings.TrimSpace(f.value) == "" {
+			issues = append(issues, Issue{
+				Field:    f.name,
+				Message:  f.name + " is required",
+				Severity: "error",
+			})
+		}
+	}
+	return issues
+}
+
+// Rule 2: owner must be a plain email address.
+func checkOwnerEmail(m Manifest) []Issue {
+	if strings.TrimSpace(m.Owner) == "" {
+		return nil // already reported by checkRequired
+	}
+	addr, err := mail.ParseAddress(m.Owner)
+	if err != nil || addr.Address != m.Owner {
+		return []Issue{{
+			Field:    "owner",
+			Message:  "owner must be a valid email address, got '" + m.Owner + "'",
+			Severity: "error",
+		}}
+	}
+	return nil
+}
