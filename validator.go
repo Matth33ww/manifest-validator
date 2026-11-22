@@ -23,6 +23,7 @@ func Validate(m Manifest) []Issue {
 	var issues []Issue
 	issues = append(issues, checkRequired(m)...)
 	issues = append(issues, checkOwnerEmail(m)...)
+	issues = append(issues, checkHealthEndpoint(m)...)
 	return issues
 }
 
@@ -61,6 +62,21 @@ func checkOwnerEmail(m Manifest) []Issue {
 		return []Issue{{
 			Field:    "owner",
 			Message:  "owner must be a valid email address, got '" + m.Owner + "'",
+			Severity: "error",
+		}}
+	}
+	return nil
+}
+
+// Rule 3: healthEndpoint must start with "/".
+func checkHealthEndpoint(m Manifest) []Issue {
+	if strings.TrimSpace(m.HealthEndpoint) == "" {
+		return nil // already reported by checkRequired
+	}
+	if !strings.HasPrefix(m.HealthEndpoint, "/") {
+		return []Issue{{
+			Field:    "healthEndpoint",
+			Message:  "healthEndpoint must start with '/', got '" + m.HealthEndpoint + "'",
 			Severity: "error",
 		}}
 	}
