@@ -18,12 +18,22 @@ type Issue struct {
 	Severity string `json:"severity"` // "error" or "warning"
 }
 
+// A rule checks one thing about a manifest and returns the problems it finds.
+type rule func(Manifest) []Issue
+
+// rules is every check Validate runs, in order. To add a rule, append it here.
+var rules = []rule{
+	checkRequired,
+	checkOwnerEmail,
+	checkHealthEndpoint,
+}
+
 // Validate runs every rule and returns all problems found.
 func Validate(m Manifest) []Issue {
 	var issues []Issue
-	issues = append(issues, checkRequired(m)...)
-	issues = append(issues, checkOwnerEmail(m)...)
-	issues = append(issues, checkHealthEndpoint(m)...)
+	for _, r := range rules {
+		issues = append(issues, r(m)...)
+	}
 	return issues
 }
 
