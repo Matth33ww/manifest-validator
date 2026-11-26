@@ -1,1 +1,15 @@
-/* You can add global styles to this file, and also import other style files */
+/* Styles for the whole app. Page styles live in app.css. */
+
+/* The browser adds a small margin around the page by default.
+   It showed a white border, so we remove it. */
+body {
+  margin: 0;
+  background: #f5f7fa;
+}
+
+/* Count padding and border inside an element's width. This makes sizes easier. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
