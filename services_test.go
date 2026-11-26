@@ -195,3 +195,23 @@ func TestAnnouncementStatusCodes(t *testing.T) {
 		})
 	}
 }
+
+func TestWrongMethodIsJSON(t *testing.T) {
+	paths := []string{"/services", "/services/1/announcements"}
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			rec := call(newServicesHandler(), http.MethodDelete, path, "")
+
+			if rec.Code != http.StatusMethodNotAllowed {
+				t.Fatalf("got status %d, want 405", rec.Code)
+			}
+			if got := rec.Header().Get("Allow"); got != "GET, POST" {
+				t.Errorf("got Allow %q, want \"GET, POST\"", got)
+			}
+			var resp map[string]string
+			if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("error is not JSON: %v (body: %s)", err, rec.Body.String())
+			}
+		})
+	}
+}
