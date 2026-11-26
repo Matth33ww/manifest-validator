@@ -1,0 +1,6 @@
+# Keep text files with LF line endings, on every computer.
+* text=auto eol=lf
+
+# These are images, not text. Git must not change them.
+*.png binary
+*.ico binary
