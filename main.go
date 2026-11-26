@@ -2,8 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -66,16 +64,9 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Stop reading if the body is bigger than the limit.
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		var tooBig *http.MaxBytesError
-		if errors.As(err, &tooBig) {
-			writeError(w, http.StatusRequestEntityTooLarge, "body is larger than 64 KB")
-			return
-		}
-		writeError(w, http.StatusBadRequest, "could not read the body")
+	// readBody stops reading if the body is bigger than the limit.
+	body, ok := readBody(w, r)
+	if !ok {
 		return
 	}
 
