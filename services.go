@@ -42,14 +42,21 @@ func NewStore() *Store {
 }
 
 // Register saves a manifest as a new service and returns it with its id.
-func (s *Store) Register(m Manifest) RegisteredService {
+// The second value is false if a service with the same name already exists.
+func (s *Store) Register(m Manifest) (RegisteredService, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	for _, existing := range s.services {
+		if existing.Name == m.Name {
+			return RegisteredService{}, false
+		}
+	}
 
 	service := RegisteredService{ID: strconv.Itoa(s.nextID), Manifest: m}
 	s.nextID++
 	s.services = append(s.services, service)
-	return service
+	return service, true
 }
 
 // List returns all services, oldest first.
@@ -163,7 +170,14 @@ func (a *ServicesAPI) handleRegister(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnprocessableEntity, ValidateResponse{Valid: false, Issues: issues})
 		return
 	}
-	writeJSON(w, http.StatusCreated, a.store.Register(manifest))
+
+	service, ok := a.store.Register(manifest)
+	if !ok {
+		// 409 means: this conflicts with something that already exists.
+		writeError(w, http.StatusConflict, "a service named '"+manifest.Name+"' is already registered")
+		return
+	}
+	writeJSON(w, http.StatusCreated, service)
 }
 
 // handleListAnnouncements answers GET /services/{id}/announcements.
