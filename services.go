@@ -3,6 +3,7 @@ package main
 import (
 	"strconv"
 	"sync"
+	"time"
 )
 
 // RegisteredService is a service that was saved after its manifest was valid.
@@ -12,12 +13,22 @@ type RegisteredService struct {
 	Manifest
 }
 
-// Store keeps registered services in memory.
+// Announcement is a news item or a planned change for one service.
+type Announcement struct {
+	ID        string    `json:"id"`
+	ServiceID string    `json:"serviceId"`
+	Title     string    `json:"title"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// Store keeps registered services and their announcements in memory.
 // The data is lost when the server stops. That is fine for this project.
 type Store struct {
-	mu       sync.Mutex // protects the fields below, because requests run at the same time
-	services []RegisteredService
-	nextID   int
+	mu            sync.Mutex // protects the fields below, because requests run at the same time
+	services      []RegisteredService
+	announcements []Announcement
+	nextID        int
 }
 
 // NewStore makes an empty store.
@@ -58,4 +69,41 @@ func (s *Store) Get(id string) (RegisteredService, bool) {
 		}
 	}
 	return RegisteredService{}, false
+}
+
+// AddAnnouncement saves a new announcement for a service.
+// The second value is false if the service does not exist.
+func (s *Store) AddAnnouncement(serviceID, title, body string) (Announcement, bool) {
+	if _, found := s.Get(serviceID); !found {
+		return Announcement{}, false
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	announcement := Announcement{
+		ID:        strconv.Itoa(s.nextID),
+		ServiceID: serviceID,
+		Title:     title,
+		Body:      body,
+		CreatedAt: time.Now().UTC(),
+	}
+	s.nextID++
+	s.announcements = append(s.announcements, announcement)
+	return announcement, true
+}
+
+// Announcements returns the announcements of one service, newest first.
+func (s *Store) Announcements(serviceID string) []Announcement {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	list := []Announcement{}
+	// Go from the end to the start, so the newest one comes first.
+	for i := len(s.announcements) - 1; i >= 0; i-- {
+		if s.announcements[i].ServiceID == serviceID {
+			list = append(list, s.announcements[i])
+		}
+	}
+	return list
 }
