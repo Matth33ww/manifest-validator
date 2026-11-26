@@ -135,3 +135,32 @@ func TestAPICORS(t *testing.T) {
 		t.Errorf("got allowed origin %q, want %q", got, testOrigin)
 	}
 }
+
+func TestAPIServicesRoutesAreConnected(t *testing.T) {
+	// Use one handler for all steps, so they share the same store.
+	h := newHandler(testOrigin)
+
+	// Register a service through the full server.
+	req := httptest.NewRequest(http.MethodPost, "/services", strings.NewReader(goodManifest))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("register: got status %d, want 201", rec.Code)
+	}
+
+	// Now the list must have it.
+	req = httptest.NewRequest(http.MethodGet, "/services", nil)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list: got status %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `"name":"billing"`) {
+		t.Errorf("list: got %s, want the billing service", rec.Body.String())
+	}
+
+	// The new routes also send the CORS header.
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != testOrigin {
+		t.Errorf("got allowed origin %q, want %q", got, testOrigin)
+	}
+}
