@@ -50,6 +50,11 @@ func newHandler(allowedOrigin string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/validate", handleValidate)
 	mux.HandleFunc("/healthz", handleHealthz)
+
+	// The routes for registered services and their announcements.
+	// One store is made here and lives as long as the server runs.
+	NewServicesAPI(NewStore()).Routes(mux)
+
 	return withCORS(allowedOrigin, mux)
 }
 
