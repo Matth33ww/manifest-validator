@@ -145,6 +145,17 @@ func (a *ServicesAPI) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /services", a.handleRegister)
 	mux.HandleFunc("GET /services/{id}/announcements", a.handleListAnnouncements)
 	mux.HandleFunc("POST /services/{id}/announcements", a.handleAddAnnouncement)
+
+	// These catch every other method, like DELETE or PUT.
+	// Without them, Go sends a plain text error. We want JSON, like everywhere else.
+	mux.HandleFunc("/services", wrongMethod)
+	mux.HandleFunc("/services/{id}/announcements", wrongMethod)
+}
+
+// wrongMethod answers 405 when the method is not GET or POST.
+func wrongMethod(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Allow", "GET, POST")
+	writeError(w, http.StatusMethodNotAllowed, "use GET or POST")
 }
 
 // handleList answers GET /services with all registered services.
