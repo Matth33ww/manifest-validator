@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 // RegisteredService is a service that was saved after its manifest was valid.
@@ -121,6 +122,7 @@ func (s *Store) Announcements(serviceID string) []Announcement {
 }
 
 // Limits for announcements, so nobody can save huge texts.
+// We count characters, not bytes, so letters like "ā" count as one.
 const (
 	maxTitleLength = 100
 	maxBodyLength  = 1000
@@ -212,7 +214,7 @@ func (a *ServicesAPI) handleAddAnnouncement(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
-	if len(title) > maxTitleLength || len(input.Body) > maxBodyLength {
+	if utf8.RuneCountInString(title) > maxTitleLength || utf8.RuneCountInString(input.Body) > maxBodyLength {
 		writeError(w, http.StatusBadRequest, "title or body is too long")
 		return
 	}
