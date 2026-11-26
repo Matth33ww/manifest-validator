@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_URL } from './api';
 
 // One problem found in a manifest.
 export interface Issue {
@@ -14,9 +15,6 @@ export interface ValidateResponse {
   valid: boolean;
   issues: Issue[];
 }
-
-// The address of the Go server. Change it if you run the server on another port.
-const API_URL = 'http://localhost:8080';
 
 @Injectable({ providedIn: 'root' })
 export class ManifestService {
