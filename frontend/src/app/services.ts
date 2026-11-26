@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_URL } from './api';
 
 // A service that has been registered after its manifest was valid.
 export interface RegisteredService {
@@ -21,9 +22,6 @@ export interface Announcement {
   body: string;
   createdAt: string;
 }
-
-// The address of the Go server. Keep it the same as in manifest.service.ts.
-const API_URL = 'http://localhost:8080';
 
 @Injectable({ providedIn: 'root' })
 export class ServicesService {
