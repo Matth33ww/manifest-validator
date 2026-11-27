@@ -11,7 +11,7 @@
 
   @if (loading()) {
     <p>Loading services...</p>
-  } @else {
+  } @else if (!errorMessage()) {
     <!-- One card per registered service. -->
     <ul class="services">
       @for (service of services(); track service.id) {
@@ -25,4 +25,40 @@
       }
     </ul>
   }
+
+  <!-- The form to register a new service. -->
+  <section class="register">
+    <h2>Register a service</h2>
+    <label for="new-manifest">Manifest (YAML or JSON)</label>
+    <textarea
+      id="new-manifest"
+      #newManifest
+      rows="6"
+      spellcheck="false"
+      [value]="manifestText()"
+      (input)="manifestText.set(newManifest.value)"
+    ></textarea>
+
+    <button type="button" (click)="register()" [disabled]="registering() || !manifestText().trim()">
+      @if (registering()) {
+        Registering...
+      } @else {
+        Register service
+      }
+    </button>
+
+    <!-- Shown when the server did not save the service. -->
+    @if (registerError()) {
+      <p class="error-box" role="alert">{{ registerError() }}</p>
+    }
+
+    <!-- The problems the server found in the manifest. -->
+    @if (registerIssues().length > 0) {
+      <ul class="issues">
+        @for (issue of registerIssues(); track issue.field + issue.message) {
+          <li>{{ issue.field }}: {{ issue.message }}</li>
+        }
+      </ul>
+    }
+  </section>
 </main>
