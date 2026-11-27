@@ -1,9 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Issue } from './manifest.service';
-import { RegisteredService, ServicesService } from './services';
+import { Announcement, RegisteredService, ServicesService } from './services';
 
-// The admin page. It shows the registered services and lets the admin add a new one.
+// The admin page. The admin can see the registered services, add a new one,
+// and write announcements for a service.
 @Component({
   selector: 'app-admin',
   templateUrl: './admin.html',
@@ -22,6 +23,16 @@ export class Admin implements OnInit {
   protected readonly registerError = signal('');
   // The problems the server found in the manifest we tried to register.
   protected readonly registerIssues = signal<Issue[]>([]);
+
+  // The service the admin clicked on. It is null when no service is open.
+  protected readonly selected = signal<RegisteredService | null>(null);
+  protected readonly announcements = signal<Announcement[]>([]);
+  protected readonly announcementError = signal('');
+
+  // The values for the new announcement form.
+  protected readonly newTitle = signal('');
+  protected readonly newBody = signal('');
+  protected readonly posting = signal(false);
 
   // Angular calls this once, when the page opens.
   ngOnInit(): void {
@@ -69,6 +80,42 @@ export class Admin implements OnInit {
           this.registerError.set(this.readError(error));
         }
         this.registering.set(false);
+      },
+    });
+  }
+
+  // Runs when the admin clicks on a service. It opens the service and loads its announcements.
+  protected select(service: RegisteredService): void {
+    this.selected.set(service);
+    this.announcements.set([]);
+    this.announcementError.set('');
+
+    this.servicesService.announcements(service.id).subscribe({
+      next: (list) => this.announcements.set(list),
+      error: (error: HttpErrorResponse) => this.announcementError.set(this.readError(error)),
+    });
+  }
+
+  // Runs when the admin clicks the Post button.
+  protected addAnnouncement(): void {
+    const service = this.selected();
+    if (!service) {
+      return;
+    }
+    this.posting.set(true);
+    this.announcementError.set('');
+
+    this.servicesService.addAnnouncement(service.id, this.newTitle(), this.newBody()).subscribe({
+      // The announcement was saved. Put it first, because the newest is on top.
+      next: (announcement) => {
+        this.announcements.update((list) => [announcement, ...list]);
+        this.newTitle.set('');
+        this.newBody.set('');
+        this.posting.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.announcementError.set(this.readError(error));
+        this.posting.set(false);
       },
     });
   }
