@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Issue } from './manifest.service';
 import { Announcement, RegisteredService, ServicesService } from './services';
@@ -6,6 +7,8 @@ import { Announcement, RegisteredService, ServicesService } from './services';
 // The admin page. The admin can see the registered services, add a new one,
 // and write announcements for a service.
 @Component({
+  // DatePipe lets the page show a date in a form people can read.
+  imports: [DatePipe],
   selector: 'app-admin',
   templateUrl: './admin.html',
 })
