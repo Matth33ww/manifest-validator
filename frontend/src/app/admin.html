@@ -1,0 +1,28 @@
+<main class="page">
+  <header>
+    <h1>Registered services</h1>
+    <p class="intro">Services that passed the manifest check and were registered.</p>
+  </header>
+
+  <!-- Shown when the server can not be reached. -->
+  @if (errorMessage()) {
+    <p class="error-box" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @if (loading()) {
+    <p>Loading services...</p>
+  } @else {
+    <!-- One card per registered service. -->
+    <ul class="services">
+      @for (service of services(); track service.id) {
+        <li class="service">
+          <h2>{{ service.name }}</h2>
+          <p class="owner">Owner: {{ service.owner }}</p>
+          <a [href]="service.url">{{ service.url }}</a>
+        </li>
+      } @empty {
+        <li class="empty">No services are registered yet.</li>
+      }
+    </ul>
+  }
+</main>
