@@ -10,6 +10,7 @@ import { Announcement, RegisteredService, ServicesService } from './services';
   // DatePipe lets the page show a date in a form people can read.
   imports: [DatePipe],
   selector: 'app-admin',
+  styleUrl: './admin.css',
   templateUrl: './admin.html',
 })
 export class Admin implements OnInit {
