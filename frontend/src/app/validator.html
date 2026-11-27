@@ -1,0 +1,62 @@
+<main class="page">
+  <header>
+    <h1>Check a service manifest</h1>
+    <p class="intro">Paste a service manifest (YAML or JSON) and check it before onboarding.</p>
+  </header>
+
+  <!-- The box where the user pastes the manifest. -->
+  <section class="editor">
+    <label for="manifest">Manifest</label>
+    <textarea
+      id="manifest"
+      #manifestBox
+      rows="10"
+      spellcheck="false"
+      [value]="manifestText()"
+      (input)="manifestText.set(manifestBox.value)"
+    ></textarea>
+
+    <button type="button" (click)="check()" [disabled]="loading() || !manifestText().trim()">
+      @if (loading()) {
+        Checking...
+      } @else {
+        Check manifest
+      }
+    </button>
+  </section>
+
+  <!-- Shown when the server can not be reached or can not read the manifest. -->
+  @if (errorMessage()) {
+    <p class="error-box" role="alert">{{ errorMessage() }}</p>
+  }
+
+  <!-- Shown after the server answers. -->
+  @if (result(); as res) {
+    <section class="result" aria-live="polite">
+      @if (res.valid) {
+        <p class="status ok">This manifest is valid.</p>
+      } @else {
+        <p class="status bad">This manifest has problems. Fix the errors below.</p>
+      }
+
+      <!-- One row per field, with its problems next to it. -->
+      <ul class="fields">
+        @for (field of fields; track field) {
+          @let fieldIssues = issuesFor(field);
+          <li class="field">
+            <span class="field-name">{{ field }}</span>
+            <span class="field-issues">
+              @for (issue of fieldIssues; track issue.message) {
+                <span class="issue" [class.warning]="issue.severity === 'warning'">
+                  {{ issue.severity }}: {{ issue.message }}
+                </span>
+              } @empty {
+                <span class="field-ok">OK</span>
+              }
+            </span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+</main>
