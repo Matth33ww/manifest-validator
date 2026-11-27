@@ -15,15 +15,68 @@
     <!-- One card per registered service. -->
     <ul class="services">
       @for (service of services(); track service.id) {
-        <li class="service">
+        <li class="service" [class.open]="selected()?.id === service.id">
           <h2>{{ service.name }}</h2>
           <p class="owner">Owner: {{ service.owner }}</p>
           <a [href]="service.url">{{ service.url }}</a>
+          <button type="button" class="small" (click)="select(service)">Announcements</button>
         </li>
       } @empty {
         <li class="empty">No services are registered yet.</li>
       }
     </ul>
+  }
+
+  <!-- Shown after the admin clicks "Announcements" on a service. -->
+  @if (selected(); as service) {
+    <section class="announcements" aria-live="polite">
+      <h2>Announcements for {{ service.name }}</h2>
+
+      <label for="new-title">Title</label>
+      <input
+        id="new-title"
+        #titleBox
+        type="text"
+        maxlength="100"
+        [value]="newTitle()"
+        (input)="newTitle.set(titleBox.value)"
+      />
+
+      <label for="new-body">Text (optional)</label>
+      <textarea
+        id="new-body"
+        #bodyBox
+        rows="3"
+        maxlength="1000"
+        [value]="newBody()"
+        (input)="newBody.set(bodyBox.value)"
+      ></textarea>
+
+      <button type="button" (click)="addAnnouncement()" [disabled]="posting() || !newTitle().trim()">
+        @if (posting()) {
+          Posting...
+        } @else {
+          Post announcement
+        }
+      </button>
+
+      @if (announcementError()) {
+        <p class="error-box" role="alert">{{ announcementError() }}</p>
+      }
+
+      <!-- The newest announcement is on top. -->
+      <ul class="announcement-list">
+        @for (item of announcements(); track item.id) {
+          <li class="announcement">
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.body }}</p>
+            <time [attr.datetime]="item.createdAt">{{ item.createdAt | date: 'medium' }}</time>
+          </li>
+        } @empty {
+          <li class="empty">No announcements yet.</li>
+        }
+      </ul>
+    </section>
   }
 
   <!-- The form to register a new service. -->
