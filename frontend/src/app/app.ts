@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Issue, ManifestService, ValidateResponse } from './manifest.service';
 
 // The example that is in the text box when the page opens.
@@ -11,7 +11,8 @@ healthEndpoint: health
 version: 1.2`;
 
 @Component({
-  imports: [RouterOutlet],
+  // RouterLink makes the menu links work. RouterLinkActive marks the open page.
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',
