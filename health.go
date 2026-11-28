@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -69,4 +73,50 @@ func newSafeClient() *http.Client {
 			return nil
 		},
 	}
+}
+
+// HealthChecker runs rule 8. It holds the HTTP client it uses.
+// Tests can give it another client, for example one that may call a local test server.
+type HealthChecker struct {
+	client *http.Client
+}
+
+// NewHealthChecker makes a HealthChecker with the safe client.
+func NewHealthChecker() *HealthChecker {
+	return &HealthChecker{client: newSafeClient()}
+}
+
+// Rule 8: the health endpoint should answer with a 2xx status, like 200 OK.
+// If it does not, we warn. A warning does not make the manifest invalid,
+// because the service may not be running yet.
+// ctx stops the check early if the user's request is cancelled.
+func (h *HealthChecker) Check(ctx context.Context, m Manifest) []Issue {
+	// For example https://billing.example.com + /health.
+	address := strings.TrimSuffix(m.URL, "/") + m.HealthEndpoint
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
+	if err != nil {
+		return []Issue{healthWarning("health check could not start: " + err.Error())}
+	}
+
+	resp, err := h.client.Do(req)
+	if errors.Is(err, errBlockedAddress) {
+		return []Issue{healthWarning("health check skipped: the address points inside a private network")}
+	}
+	if err != nil {
+		return []Issue{healthWarning("health check failed: could not reach " + address)}
+	}
+	defer resp.Body.Close()
+	// Read a little of the body and throw it away, so the connection can be used again.
+	io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return []Issue{healthWarning(fmt.Sprintf("health check returned status %d, want 2xx", resp.StatusCode))}
+	}
+	return nil
+}
+
+// healthWarning makes a warning for the healthEndpoint field.
+func healthWarning(message string) Issue {
+	return Issue{Field: "healthEndpoint", Message: message, Severity: "warning"}
 }
