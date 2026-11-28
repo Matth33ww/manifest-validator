@@ -24,4 +24,21 @@ describe('App', () => {
     const page = fixture.nativeElement as HTMLElement;
     expect(page.textContent).toContain('Service Manifest Validator');
   });
+
+  it('should have menu links to both pages', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const page = fixture.nativeElement as HTMLElement;
+
+    // Read the text and the address of each menu link.
+    const links = Array.from(page.querySelectorAll('nav a')).map((link) => ({
+      text: link.textContent?.trim(),
+      href: link.getAttribute('href'),
+    }));
+
+    expect(links).toEqual([
+      { text: 'Validator', href: '/' },
+      { text: 'Admin', href: '/admin' },
+    ]);
+  });
 });
