@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -85,15 +86,16 @@ func TestHealthCheckStatus(t *testing.T) {
 
 func TestHealthCheckBlocksLocalAddress(t *testing.T) {
 	// This server works, but it is on 127.0.0.1. The safe client must not call it.
-	called := false
+	// The server runs in another goroutine, so we use atomic.Bool to share "called" safely.
+	var called atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
+		called.Store(true)
 	}))
 	defer server.Close()
 
 	issues := NewHealthChecker().Check(context.Background(), Manifest{URL: server.URL, HealthEndpoint: "/health"})
 
-	if called {
+	if called.Load() {
 		t.Error("the safe client called a local address")
 	}
 	if len(issues) != 1 || !strings.Contains(issues[0].Message, "private network") {
