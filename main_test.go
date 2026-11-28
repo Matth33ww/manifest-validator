@@ -164,3 +164,55 @@ func TestAPIServicesRoutesAreConnected(t *testing.T) {
 		t.Errorf("got allowed origin %q, want %q", got, testOrigin)
 	}
 }
+
+func TestAPICheckHealthOption(t *testing.T) {
+	// A local server. It counts the calls, so we know if it was called at all.
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// The address is on 127.0.0.1, so the safe client must block it.
+	body := "name: billing\nowner: a@b.com\nurl: " + server.URL + "\nhealthEndpoint: /health\n"
+
+	t.Run("without the option the server is not called", func(t *testing.T) {
+		rec := send(http.MethodPost, "/validate", body)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("got status %d, want 200", rec.Code)
+		}
+		if strings.Contains(rec.Body.String(), "private network") {
+			t.Errorf("got %s, want no health warning", rec.Body.String())
+		}
+		if calls != 0 {
+			t.Errorf("server was called %d times, want 0", calls)
+		}
+	})
+
+	t.Run("with the option the blocked address gives a warning", func(t *testing.T) {
+		rec := send(http.MethodPost, "/validate?checkHealth=true", body)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("got status %d, want 200", rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), "private network") {
+			t.Errorf("got %s, want a warning about a private network", rec.Body.String())
+		}
+		// A warning does not make the manifest invalid.
+		if !strings.Contains(rec.Body.String(), `"valid":true`) {
+			t.Errorf("got %s, want valid to stay true", rec.Body.String())
+		}
+		if calls != 0 {
+			t.Errorf("the safe client called a local address %d times", calls)
+		}
+	})
+
+	t.Run("with errors the health check is skipped", func(t *testing.T) {
+		// The owner is not an email, so the manifest has an error.
+		bad := "name: billing\nowner: nope\nurl: " + server.URL + "\nhealthEndpoint: /health\n"
+		rec := send(http.MethodPost, "/validate?checkHealth=true", bad)
+		if strings.Contains(rec.Body.String(), "private network") {
+			t.Errorf("got %s, want no health check when there are errors", rec.Body.String())
+		}
+	})
+}
