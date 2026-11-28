@@ -1,0 +1,13 @@
+# Files Docker does not send when it builds the Go server.
+# Less to send means a faster build.
+
+# Git history.
+.git
+
+# The Angular app has its own Dockerfile in frontend/.
+# Its node_modules folder is very big.
+frontend
+
+# Not needed to build the server.
+.github
+*.md
