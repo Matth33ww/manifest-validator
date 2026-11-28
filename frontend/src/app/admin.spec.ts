@@ -131,4 +131,25 @@ describe('Admin', () => {
     const titles = Array.from(page.querySelectorAll('.announcement h3')).map((h) => h.textContent);
     expect(titles).toEqual(['New version', 'Old news']);
   });
+
+  it('should not show old announcements after a quick click on another service', async () => {
+    const search = { ...billing, id: '2', name: 'search', owner: 'find@example.com' };
+    const { fixture, page } = await openWith([billing, search]);
+    const buttons = page.querySelectorAll('button.small');
+
+    // Click billing, then search, before the server answers.
+    (buttons[0] as HTMLButtonElement).click();
+    (buttons[1] as HTMLButtonElement).click();
+    const forBilling = http.expectOne(`${API}/services/1/announcements`);
+    const forSearch = http.expectOne(`${API}/services/2/announcements`);
+
+    // The answer for search comes first, and the answer for billing comes last.
+    forSearch.flush([{ id: '3', serviceId: '2', title: 'Search news', body: '', createdAt: '2026-11-28T10:00:00Z' }]);
+    forBilling.flush([{ id: '4', serviceId: '1', title: 'Billing news', body: '', createdAt: '2026-11-28T10:00:00Z' }]);
+    await fixture.whenStable();
+
+    expect(page.querySelector('.announcements h2')?.textContent).toContain('search');
+    const titles = Array.from(page.querySelectorAll('.announcement h3')).map((h) => h.textContent);
+    expect(titles).toEqual(['Search news']);
+  });
 });
