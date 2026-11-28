@@ -166,27 +166,23 @@ func TestAPIServicesRoutesAreConnected(t *testing.T) {
 }
 
 func TestAPICheckHealthOption(t *testing.T) {
-	// A local server. It counts the calls, so we know if it was called at all.
-	calls := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		w.WriteHeader(http.StatusOK)
-	}))
+	// A local server. We only use its address, which is on 127.0.0.1.
+	server := httptest.NewServer(http.NotFoundHandler())
 	defer server.Close()
 
-	// The address is on 127.0.0.1, so the safe client must block it.
-	body := "name: billing\nowner: a@b.com\nurl: " + server.URL + "\nhealthEndpoint: /health\n"
+	// Rule 4 needs https, so we use https with the same local address.
+	// The safe client must block it. If it did not block it, the check would
+	// fail in another way ("could not reach"), and the test below would see that.
+	localHTTPS := "https://" + strings.TrimPrefix(server.URL, "http://")
+	body := "name: billing\nowner: a@b.com\nurl: " + localHTTPS + "\nhealthEndpoint: /health\n"
 
-	t.Run("without the option the server is not called", func(t *testing.T) {
+	t.Run("without the option there is no health check", func(t *testing.T) {
 		rec := send(http.MethodPost, "/validate", body)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("got status %d, want 200", rec.Code)
 		}
-		if strings.Contains(rec.Body.String(), "private network") {
+		if strings.Contains(rec.Body.String(), "health check") {
 			t.Errorf("got %s, want no health warning", rec.Body.String())
-		}
-		if calls != 0 {
-			t.Errorf("server was called %d times, want 0", calls)
 		}
 	})
 
@@ -202,16 +198,13 @@ func TestAPICheckHealthOption(t *testing.T) {
 		if !strings.Contains(rec.Body.String(), `"valid":true`) {
 			t.Errorf("got %s, want valid to stay true", rec.Body.String())
 		}
-		if calls != 0 {
-			t.Errorf("the safe client called a local address %d times", calls)
-		}
 	})
 
 	t.Run("with errors the health check is skipped", func(t *testing.T) {
 		// The owner is not an email, so the manifest has an error.
-		bad := "name: billing\nowner: nope\nurl: " + server.URL + "\nhealthEndpoint: /health\n"
+		bad := "name: billing\nowner: nope\nurl: " + localHTTPS + "\nhealthEndpoint: /health\n"
 		rec := send(http.MethodPost, "/validate?checkHealth=true", bad)
-		if strings.Contains(rec.Body.String(), "private network") {
+		if strings.Contains(rec.Body.String(), "health check") {
 			t.Errorf("got %s, want no health check when there are errors", rec.Body.String())
 		}
 	})
