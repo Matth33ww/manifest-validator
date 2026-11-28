@@ -46,7 +46,7 @@ func getEnv(key, fallback string) string {
 // The tests use it too, so they test the same routes as the real server.
 func newHandler(allowedOrigin string) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/validate", handleValidate)
+	mux.HandleFunc("/validate", handleValidate(NewHealthChecker()))
 	mux.HandleFunc("/healthz", handleHealthz)
 
 	// The routes for registered services and their announcements.
@@ -57,34 +57,44 @@ func newHandler(allowedOrigin string) http.Handler {
 }
 
 // handleValidate reads a manifest from the request body and checks it.
-func handleValidate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		writeError(w, http.StatusMethodNotAllowed, "use POST to send a manifest")
-		return
-	}
+// checker runs the live health check (rule 8) when the user asks for it.
+func handleValidate(checker *HealthChecker) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST")
+			writeError(w, http.StatusMethodNotAllowed, "use POST to send a manifest")
+			return
+		}
 
-	// readBody stops reading if the body is bigger than the limit.
-	body, ok := readBody(w, r)
-	if !ok {
-		return
-	}
+		// readBody stops reading if the body is bigger than the limit.
+		body, ok := readBody(w, r)
+		if !ok {
+			return
+		}
 
-	manifest, err := ParseManifest(body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
+		manifest, err := ParseManifest(body)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 
-	issues := Validate(manifest)
-	if issues == nil {
-		// Send an empty list "[]" in the JSON, not "null".
-		issues = []Issue{}
+		issues := Validate(manifest)
+
+		// Rule 8 runs only when the user asks for it with ?checkHealth=true,
+		// because it calls the service over the network and can be slow.
+		// We skip it when the manifest has errors, because the address may be wrong.
+		if r.URL.Query().Get("checkHealth") == "true" && !hasErrors(issues) {
+			issues = append(issues, checker.Check(r.Context(), manifest)...)
+		}
+		if issues == nil {
+			// Send an empty list "[]" in the JSON, not "null".
+			issues = []Issue{}
+		}
+		writeJSON(w, http.StatusOK, ValidateResponse{
+			Valid:  !hasErrors(issues),
+			Issues: issues,
+		})
 	}
-	writeJSON(w, http.StatusOK, ValidateResponse{
-		Valid:  !hasErrors(issues),
-		Issues: issues,
-	})
 }
 
 // handleHealthz tells other tools that the server is running.
