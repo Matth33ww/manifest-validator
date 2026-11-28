@@ -95,8 +95,20 @@ export class Admin implements OnInit {
     this.announcementError.set('');
 
     this.servicesService.announcements(service.id).subscribe({
-      next: (list) => this.announcements.set(list),
-      error: (error: HttpErrorResponse) => this.announcementError.set(this.readError(error)),
+      next: (list) => {
+        // The admin may have clicked another service while we waited.
+        // Then this answer is old, so we do not show it.
+        if (this.selected()?.id !== service.id) {
+          return;
+        }
+        this.announcements.set(list);
+      },
+      error: (error: HttpErrorResponse) => {
+        if (this.selected()?.id !== service.id) {
+          return;
+        }
+        this.announcementError.set(this.readError(error));
+      },
     });
   }
 
